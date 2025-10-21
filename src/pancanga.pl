@@ -2083,10 +2083,277 @@ sub cache_variable_clear{
 }
 
 #{:::::::::::::::::::::::::::}
+#{ Command line argument parsing }
+
+# Place coordinates database (matching Python implementation)
+my %place_coordinates = (
+    # Major Indian cities
+    'ujjain'         => { 'lat' => 23.2, 'lon' => 75.8, 'name' => 'Ujjain' },
+    'delhi'          => { 'lat' => 28.6, 'lon' => 77.2, 'name' => 'Delhi' },
+    'mumbai'         => { 'lat' => 19.0, 'lon' => 72.8, 'name' => 'Mumbai' },
+    'bangalore'      => { 'lat' => 12.9, 'lon' => 77.6, 'name' => 'Bangalore' },
+    'chennai'        => { 'lat' => 13.1, 'lon' => 80.2, 'name' => 'Chennai' },
+    'kolkata'        => { 'lat' => 22.6, 'lon' => 88.4, 'name' => 'Kolkata' },
+    # International cities
+    'kathmandu'      => { 'lat' => 27.7, 'lon' => 85.3, 'name' => 'Kathmandu' },
+    'colombo'        => { 'lat' => 6.9,  'lon' => 79.9, 'name' => 'Colombo' },
+    'dhaka'          => { 'lat' => 23.8, 'lon' => 90.4, 'name' => 'Dhaka' },
+    # Alternative names
+    'bombay'         => { 'lat' => 19.0, 'lon' => 72.8, 'name' => 'Mumbai' },
+    'calcutta'       => { 'lat' => 22.6, 'lon' => 88.4, 'name' => 'Kolkata' },
+);
+
+sub parse_command_line_args {
+    my $json_output = 0;
+    my $command = "";
+    my @args = ();
+    
+    # Check if we have command line arguments
+    if (@ARGV > 0) {
+        # First pass: parse global options before command
+        my @remaining_args = ();
+        while (@ARGV > 0) {
+            my $arg = shift @ARGV;
+            if ($arg eq '--json' || $arg eq '-j') {
+                $json_output = 1;
+            } elsif ($arg eq '--place' || $arg eq '-p') {
+                my $place_name = lc(shift @ARGV);
+                if (exists $place_coordinates{$place_name}) {
+                    $loc_lat = $place_coordinates{$place_name}{'lat'};
+                    $loc_lon = $place_coordinates{$place_name}{'lon'};
+                    $desantara = ($loc_lon - $Ujjaini_lon) / 360;
+                    unless ($json_output) {
+                        printf STDERR "Using coordinates for %s: %.1f°N, %.1f°E\n", 
+                               $place_coordinates{$place_name}{'name'}, $loc_lat, $loc_lon;
+                    }
+                } else {
+                    print STDERR "Error: Unknown place '$place_name'\n";
+                    exit 1;
+                }
+            } else {
+                push @remaining_args, $arg;
+            }
+        }
+        
+        # Get command
+        if (@remaining_args > 0) {
+            $command = shift @remaining_args;
+        }
+        
+        # Parse remaining arguments
+        while (@remaining_args > 0) {
+            my $arg = shift @remaining_args;
+            if ($arg eq '--json' || $arg eq '-j') {
+                $json_output = 1;
+            } elsif ($arg eq '--paksa') {
+                push @args, '--paksa', shift @remaining_args;
+            } elsif ($arg eq '--year-system') {
+                push @args, '--year-system', shift @remaining_args;
+            } else {
+                push @args, $arg;
+            }
+        }
+        
+        # Execute command
+        if ($command eq 'try') {
+            &execute_try_command(@args, $json_output);
+        } elsif ($command eq 'list') {
+            &execute_list_command(@args, $json_output);
+        } elsif ($command eq 'verbose') {
+            &execute_verbose_command(@args, $json_output);
+        } else {
+            print "Unknown command: $command\n";
+            print "Available commands: try, list, verbose\n";
+            exit 1;
+        }
+        exit 0;
+    }
+}
+
+sub execute_try_command {
+    my @args = @_;
+    my $json_output = pop @args;
+    
+    my $year = shift @args;
+    my $month = shift @args;
+    my $tithi = shift @args;
+    my $paksa = 'Suklapaksa';  # default
+    my $year_system = 'S';     # default Saka
+    
+    # Parse options
+    while (@args > 0) {
+        my $opt = shift @args;
+        if ($opt eq '--paksa') {
+            my $paksa_val = shift @args;
+            if ($paksa_val eq 'S') {
+                $paksa = 'Suklapaksa';
+            } elsif ($paksa_val eq 'K') {
+                $paksa = 'Krsnapaksa';
+            }
+        } elsif ($opt eq '--year-system') {
+            my $year_sys = shift @args;
+            if ($year_sys eq 'S') {
+                $year_system = 'S';
+            } elsif ($year_sys eq 'V') {
+                $year_system = 'V';
+            }
+        }
+    }
+    
+    # Set global variables
+    $YearSaka = $year;
+    $masa_num = $month;
+    $tithi_day = $tithi;
+    
+    # Convert year system if needed
+    if ($year_system eq 'V') {
+        $YearSaka = $year - 135;  # Convert Vikrama to Saka
+    }
+    
+    # Perform calculations
+    &try_calculations;
+    
+    if ($json_output) {
+        &output_try_json;
+    } else {
+        &write_try_list;
+    }
+}
+
+sub execute_list_command {
+    my @args = @_;
+    my $json_output = pop @args;
+    
+    my $input_year = shift @args;
+    my $input_month = shift @args;
+    my $input_day = shift @args;
+    
+    # Set global variables
+    $year = $input_year;
+    $month = $input_month;
+    $day = $input_day;
+    
+    # Perform calculations for 10 consecutive days
+    for (my $counter = 1; $counter < 11; $counter++) {
+        &calculations;
+        
+        if ($json_output) {
+            &output_list_json;
+        } else {
+            &write_list;
+        }
+        
+        ($year, $month, $day) = &next_date($year, $month, $day);
+    }
+}
+
+sub execute_verbose_command {
+    my @args = @_;
+    my $json_output = pop @args;
+    
+    my $input_year = shift @args;
+    my $input_month = shift @args;
+    my $input_day = shift @args;
+    
+    # Set global variables
+    $year = $input_year;
+    $month = $input_month;
+    $day = $input_day;
+    
+    # Perform calculations
+    &calculations;
+    &planetary_calculations;
+    
+    if ($json_output) {
+        &output_verbose_json;
+    } else {
+        &write_table;
+    }
+}
+
+sub output_try_json {
+    my $json = "{\n";
+    $json .= "  \"saka_year\": $YearSaka,\n";
+    $json .= "  \"vikrama_year\": " . ($YearSaka + 135) . ",\n";
+    $json .= "  \"masa\": \"$masa\",\n";
+    $json .= "  \"paksa\": \"$sukla_krsna\",\n";
+    $json .= "  \"tithi\": $tithi_day,\n";
+    $json .= "  \"modern_year\": $year,\n";
+    $json .= "  \"modern_month\": $month,\n";
+    $json .= "  \"modern_day\": " . int($day) . ",\n";
+    $json .= "  \"weekday\": \"$weekday_name\"\n";
+    $json .= "}\n";
+    print $json;
+}
+
+sub output_list_json {
+    my $json = "{\n";
+    $json .= "  \"year\": $year,\n";
+    $json .= "  \"month\": $month,\n";
+    $json .= "  \"day\": " . int($day) . ",\n";
+    $json .= "  \"weekday\": \"$weekday_name\",\n";
+    $json .= "  \"saka_year\": $YearSaka,\n";
+    $json .= "  \"vikrama_year\": $YearVikrama,\n";
+    $json .= "  \"masa\": \"$adhimasa$masa\",\n";
+    $json .= "  \"paksa\": \"$sukla_krsna\",\n";
+    $json .= "  \"tithi\": $tithi_day,\n";
+    $json .= "  \"naksatra\": \"$naksatra\"\n";
+    $json .= "}\n";
+    print $json;
+}
+
+sub output_verbose_json {
+    my $json = "{\n";
+    $json .= "  \"year\": $year,\n";
+    $json .= "  \"month\": $month,\n";
+    $json .= "  \"day\": " . int($day) . ",\n";
+    $json .= "  \"weekday_name\": \"$weekday_name\",\n";
+    $json .= "  \"julian_day\": " . ($JulianDay || 0) . ",\n";
+    $json .= "  \"ahargana\": " . ($ahargana || 0) . ",\n";
+    $json .= "  \"sunrise_hour\": " . ($sriseh || 0) . ",\n";
+    $json .= "  \"sunrise_minute\": " . ($srisem || 0) . ",\n";
+    $json .= "  \"ayanadeg\": " . ($ayanadeg || 0) . ",\n";
+    $json .= "  \"ayanamin\": " . ($ayanamin || 0) . ",\n";
+    $json .= "  \"saka_year\": $YearSaka,\n";
+    $json .= "  \"vikrama_year\": $YearVikrama,\n";
+    $json .= "  \"kali_year\": $YearKali,\n";
+    $json .= "  \"vikrama_solar_year\": " . ($YearVikramaSolar || 0) . ",\n";
+    $json .= "  \"adhimasa\": \"$adhimasa\",\n";
+    $json .= "  \"masa\": \"$masa\",\n";
+    $json .= "  \"sukla_krsna\": \"$sukla_krsna\",\n";
+    $json .= "  \"tithi_day\": $tithi_day,\n";
+    $json .= "  \"ftithi\": " . ($ftithi || 0) . ",\n";
+    $json .= "  \"saura_masa\": \"$saura_masa\",\n";
+    $json .= "  \"saura_masa_day\": " . ($saura_masa_day || 0) . ",\n";
+    $json .= "  \"samkranti_year\": " . ($samkranti_year || 0) . ",\n";
+    $json .= "  \"samkranti_month\": " . ($samkranti_month || 0) . ",\n";
+    $json .= "  \"samkranti_day\": " . ($samkranti_day || 0) . ",\n";
+    $json .= "  \"samkranti_hour\": " . ($samkranti_hour || 0) . ",\n";
+    $json .= "  \"samkranti_minute\": " . ($samkranti_min || 0) . ",\n";
+    $json .= "  \"vikram_saura_masa\": \"$vikram_saura_masa\",\n";
+    $json .= "  \"naksatra\": \"$naksatra\",\n";
+    $json .= "  \"karana\": \"" . &get_karana_name($tithi) . "\",\n";
+    $json .= "  \"yoga\": \"" . &get_yoga_name($tslong, $tllong) . "\",\n";
+    $json .= "  \"tslong\": " . ($tslong || 0) . ",\n";
+    $json .= "  \"tllong\": " . ($tllong || 0) . ",\n";
+    $json .= "  \"jovian_north\": \"" . &get_Jovian_Year_name($YearKali) . "\",\n";
+    $json .= "  \"jovian_south\": \"" . &get_Jovian_Year_name_south($YearKali) . "\",\n";
+    $json .= "  \"next_samkranti_year\": " . ($next_samkranti_year || 0) . ",\n";
+    $json .= "  \"next_samkranti_month\": " . ($next_samkranti_month || 0) . ",\n";
+    $json .= "  \"next_samkranti_day\": " . ($next_samkranti_day || 0) . ",\n";
+    $json .= "  \"next_samkranti_hour\": " . ($next_samkranti_hour || 0) . ",\n";
+    $json .= "  \"next_samkranti_minute\": " . ($next_samkranti_minute || 0) . "\n";
+    $json .= "}\n";
+    print $json;
+}
+
+#{:::::::::::::::::::::::::::}
 #{main routine}
 if (defined ($pancanga_as_sub)) {
 1;
 } else {
+    # Check for command line arguments first
+    &parse_command_line_args;
 &write_opening_message;
 print "If there is no need to change default settings, type E.\n"; # 20140315
 $prog_mode = 'setting';
