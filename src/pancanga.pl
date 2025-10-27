@@ -691,7 +691,7 @@ sub read_char {
 
 }
 
-sub read_indian_date {
+sub read_vedic_date {
 
     local($saka_year, $vikrama_year, $masa_num, $paksa, $tithi_day);
     local($paksa_ans);
@@ -1794,17 +1794,17 @@ sub wechseln_calc_write{ ###20011109
 # { OUTPUT }
 
 sub write_opening_message{
-print "   ********* Pancanga vers.3.14  **********   M. YANO and M. FUSHIMI \n";#20140315
+print "   ********* Panchanga vers.3.14  **********   M. YANO and M. FUSHIMI \n";#20140315
 #print "   ----------------- perl version ------------- March 2002          \n";
 print "   ----------------- perl version ------------- March 2014          \n";
 # 20140315
 print "       This program is based on the Suuryasiddhaanta (ca AD 1000), \n";
 print "   and also on the older constants of the Pancasiddhaantikaa (AD 505).        \n";
 print "   <MENUES>                                                         \n";
-print "   <T>:   To find the modern date from the given Indian date.   The \n";
+print "   <T>:   To find the modern date from the given Vedic date.   The \n";
 print "       result is not always correct.  (Sometimes error is one month \n";
 print "       because of adhimaasa.) You should confirm it by menu <L>.     \n";
-print "   <L>:   To find the Indian date (in amaanta) from the given modern \n";
+print "   <L>:   To find the Vedic date (in amaanta) from the given modern \n";
 print "       date.  The result is considerably reliable:  the month names \n";
 print "       are almost always correct; only the error of 1 tithi is to be \n";
 print "       admitted because of occurrence of KSayadina or adhidina.     \n";
@@ -1816,7 +1816,7 @@ print "   NOTICE ... Remember the difference of amaanta and puurNimaanta.     \n
 print "              Beginning of the year is set for Caitra sukla 1.      \n";
 print "   ***** This program should not be copied without our permission.  \n";
 print "     Please contact:                                                \n";
-print "         M.YANO (for Indian astronomy): yanom at cc.kyoto-su.ac.jp \n"; #20140315
+print "         M.YANO (for Vedic astronomy): yanom at cc.kyoto-su.ac.jp \n"; #20140315
 print "         M.FUSHIMI (for programming) at makoto.fushimi at nifty.com \n"; #20140315
 }
 
@@ -1939,14 +1939,14 @@ sub write_table{
     printf "===============================================================================\n";
   };
 # 20140315
-#    printf "  Pancanga based on the Suryasiddhanta (at sunrise)";
-#    printf "  Pancanga based on Suryasiddhanta (sunrise)";  #20020304
+#    printf "  Panchanga based on the Suryasiddhanta (at sunrise)";
+#    printf "  Panchanga based on Suryasiddhanta (sunrise)";  #20020304
 if ($SelectedSystem eq 'SuryaSiddhanta') { #20140315
-    printf "  Pancanga based on Suryasiddhanta (AD 1000 ca) \n";
+    printf "  Panchanga based on Suryasiddhanta (AD 1000 ca) \n";
 } elsif ($SelectedSystem eq 'InPancasiddhantika') {
-    printf "  Pancanga based on older constants in Pancasiddhantika (AD 505) \n";
+    printf "  Panchanga based on older constants in Pancasiddhantika (AD 505) \n";
 } else {
-    printf "  Pancanga based on Suryasiddhanta (AD 1000 ca) \n";
+    printf "  Panchanga based on Suryasiddhanta (AD 1000 ca) \n";
 }
     printf "    at latitude=%3s,", $loc_lat; #20020304
     printf " longitude=%3s\n", $loc_lon; #20020304
@@ -1956,7 +1956,7 @@ if ($SelectedSystem eq 'SuryaSiddhanta') { #20140315
 #    printf "      Nirayana  True Longitude   |  Lunar Month Names      |  Solar Month Names\n";
 #    &write_nirayana_longitude;
 #    printf "-------------------------------------------------------------------------------\n";
-    printf " Indian date (luni-solar year and amanta month)  (*) local sunrise...%2sh %2sm\n", $sriseh, $srisem; ###20010313
+    printf " Vedic date (luni-solar year and amanta month)  (*) local sunrise...%2sh %2sm\n", $sriseh, $srisem; ###20010313
 # 20140315
     printf "   (Nirayana True Longitude at sunrise. ";
     &write_nirayana_longitude_sun_moon;
@@ -2087,7 +2087,7 @@ sub cache_variable_clear{
 
 # Place coordinates database (matching Python implementation)
 my %place_coordinates = (
-    # Major Indian cities
+    # Major Vedic cities
     'ujjain'         => { 'lat' => 23.2, 'lon' => 75.8, 'name' => 'Ujjain' },
     'delhi'          => { 'lat' => 28.6, 'lon' => 77.2, 'name' => 'Delhi' },
     'mumbai'         => { 'lat' => 19.0, 'lon' => 72.8, 'name' => 'Mumbai' },
@@ -2362,7 +2362,7 @@ while ($prog_mode ne 'prog_end') {
         &set_prog_mode($prog_mode_message);
     } elsif ($prog_mode eq 'try') {
         print "\n";
-        ($YearSaka, $masa_num, $paksa, $tithi_day) = &read_indian_date;
+        ($YearSaka, $masa_num, $paksa, $tithi_day) = &read_vedic_date;
         &try_calculations;
         print "\n";
         &write_try_list;
